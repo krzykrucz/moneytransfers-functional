@@ -24,6 +24,10 @@ class TransferHandler(val loadAccount: LoadAccount,
                 .map {
                     loadAccount(it)
                             .flatMapSuccess{orderTransfer(transferOrderCheque, it)}
+                            .mapSuccess { events ->
+                                publishEvents(events)
+                                events
+                            }
                             .mapSuccess { it.find { it is AccountDebited } as AccountDebited }
                             .mapSuccess { saveAccount(it.account) }
                             .unsafeRunSync()
