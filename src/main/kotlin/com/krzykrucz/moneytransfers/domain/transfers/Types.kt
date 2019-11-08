@@ -4,10 +4,11 @@ package com.krzykrucz.moneytransfers.domain.transfers
 
 import arrow.core.Either
 import arrow.core.Option
-import arrow.core.Tuple2
-import arrow.effects.IO
+import arrow.core.maybe
+import arrow.core.toT
 import org.joda.money.Money
 import java.util.*
+import arrow.core.Option.Companion as Option1
 
 // cheque:
 // beneficiary name, beneficiary acc number, currency, amount, orderer account number, orderer name, title
@@ -39,11 +40,10 @@ data class TransferOrder(
 data class AccountNumber private constructor(val number: NonEmptyText) {
     companion object {
         fun create(number: NonEmptyText): Option<AccountNumber> =
-                if ("^[0-9]{26}$".toRegex().matches(number.text))
-                    Option.just(AccountNumber(number))
-                else
-                    Option.empty()
-
+                "^[0-9]{26}$"
+                        .toRegex()
+                        .matches(number.text)
+                        .maybe { AccountNumber(number) }
     }
 }
 
@@ -55,6 +55,7 @@ data class TransferOrderRejected(val reason: Text)
 //typealias ValidateTransfer = (TransferOrderCheque) -> Either<TransferOrderRejected, TransferOrder>
 //
 typealias CheckDailyLimit = (TransferAmount) -> Boolean
+
 typealias ValidateTransfer = (CheckDailyLimit, TransferOrderCheque) -> Either<TransferOrderRejected, TransferOrder>
 
 //------
@@ -85,14 +86,22 @@ typealias ClassifyTransfer = (FindOutBank, TransferOrder) -> AsyncOutput<Text, T
 typealias DebitAccount = (OrdererAccount, Transfer) -> DebitedOrdererAccount
 
 inline class AccountBalance(val balance: Money)
-inline class DailyLimit(val limit: NaturalNumber)
-data class OrdererAccount(val balance: AccountBalance, val dailyLimit: DailyLimit)
+
+sealed class TransferLimit {
+    data class Daily(val limit: NaturalNumber): TransferLimit()
+    object None: TransferLimit()
+}
+data class OrdererAccount(
+        val accountNumber: AccountNumber,
+        val balance: AccountBalance,
+        val transferLimit: TransferLimit
+)
 typealias DebitedOrdererAccount = OrdererAccount
 
 
 sealed class TransferMoneyError {
-    class CannotClassifyTransfer : TransferMoneyError()
-    class OrderInvalid : TransferMoneyError()
+    object CannotClassifyTransfer : TransferMoneyError()
+    object OrderInvalid : TransferMoneyError()
 }
 
 
@@ -133,21 +142,33 @@ fun orderTransfer(
         classifyTransfer: ClassifyTransfer,
         debitAccount: DebitAccount,
         checkDailyLimit: CheckDailyLimit,
-        findOutBank: FindOutBank
+        findOutBank: FindOutBank,
+        createEvents: CreateEvents
 ): OrderTransfer = { transferOrderCheque, ordererAccount ->
-    AsyncFactory.justEither(validateTransfer(checkDailyLimit, transferOrderCheque))
-            .mapError { TransferMoneyError.OrderInvalid() }
-            .flatMapSuccess { classifyTransfer(findOutBank, it)
-                    .mapError { TransferMoneyError.CannotClassifyTransfer() }}
-            .mapSuccess { Tuple2(debitAccount(ordererAccount, it), it) }
-            .mapSuccess { transferEvents(it.b, it.a) }
+    validateTransfer(checkDailyLimit, transferOrderCheque)
+            .let { AsyncOutput.just(it) }
+            .mapError { TransferMoneyError.OrderInvalid }
+            .flatMapSuccess { order ->
+                classifyTransfer(findOutBank, order)
+                        .mapError { TransferMoneyError.CannotClassifyTransfer }
+            }
+            .mapSuccess { transfer -> debitAccount(ordererAccount, transfer).toT(transfer) }
+            .mapSuccess { (account, transfer) -> createEvents(transfer, account) }
 }
 
-fun transferEvents(transfer: Transfer, debitedOrdererAccount: DebitedOrdererAccount) =
-        when (transfer) {
-            is Transfer.IntraBankTransfer -> Option.just(IntraBankTransferOrdered(transfer))
-            else -> Option.empty()
-        }.toList()
-                .toMutableList()
-                .plus(AccountDebited(debitedOrdererAccount))
+typealias CreateEvents = (Transfer, DebitedOrdererAccount) -> List<TransferEvent>
 
+fun Transfer.toEvent(): Option<TransferEvent> =
+        when (this) {
+            is Transfer.IntraBankTransfer ->
+                IntraBankTransferOrdered(this)
+                        .let(Option1::just)
+            else -> Option1.empty()
+        }
+
+val createEvents: CreateEvents = { transfer, debitedOrdererAccount ->
+    transfer.toEvent()
+            .toList()
+            .toMutableList()
+            .plus(AccountDebited(debitedOrdererAccount))
+}

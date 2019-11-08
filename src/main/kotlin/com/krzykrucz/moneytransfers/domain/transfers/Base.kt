@@ -1,9 +1,11 @@
 package com.krzykrucz.moneytransfers.domain.transfers
 
 import arrow.core.Either
+import arrow.core.Option
 import arrow.core.Predicate
 import arrow.core.flatMap
 import arrow.core.getOrHandle
+import arrow.core.maybe
 import arrow.effects.IO
 import org.joda.money.CurrencyUnit
 
@@ -12,9 +14,8 @@ typealias CurrencyCode = CurrencyUnit
 
 data class NonEmptyText(val text: String) {
     companion object {
-        fun of(string: String): NonEmptyText? =
-                if (string.isNotEmpty()) NonEmptyText(string)
-                else null
+        fun of(string: String): Option<NonEmptyText> =
+                string.isNotEmpty().maybe { NonEmptyText(string) }
     }
 }
 
@@ -99,6 +100,5 @@ class AsyncFactory {
     companion object {
         fun <S> justSuccess(success: S) = IO.just(Either.right(success))
         fun <E> justError(error: E) = IO.just(Either.left(error))
-        fun <E, S> justEither(either: Either<E, S>) = IO.just(either)
     }
 }
