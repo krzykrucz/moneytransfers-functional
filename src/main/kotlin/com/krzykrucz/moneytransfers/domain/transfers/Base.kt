@@ -10,7 +10,6 @@ import arrow.effects.IO
 import org.joda.money.CurrencyUnit
 
 typealias Text = String
-typealias CurrencyCode = CurrencyUnit
 
 data class NonEmptyText(val text: String) {
     companion object {

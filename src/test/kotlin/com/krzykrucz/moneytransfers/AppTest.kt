@@ -1,4 +1,4 @@
-package starter.kotlin
+package com.krzykrucz.moneytransfers
 
 import io.restassured.RestAssured.get
 import io.restassured.RestAssured.given
@@ -17,7 +17,7 @@ object AppTest : Spek({
                     val name = "Victor"
                     given()
                             .queryParam("name", name)
-                    .`when`()
+                            .`when`()
                             .get("/")
                             .then()
                             .assertThat()
@@ -33,14 +33,14 @@ object AppTest : Spek({
             given("no queryParameter") {
                 it("should return Kotlin as the default name") {
                     get("/")
-                        .then()
-                        .assertThat()
-                        .statusCode(Status.OK.value())
-                        .extract()
-                        .asString()
-                        .let {
-                            it shouldEqual "Hello Kotlin!"
-                        }
+                            .then()
+                            .assertThat()
+                            .statusCode(Status.OK.value())
+                            .extract()
+                            .asString()
+                            .let {
+                                it shouldEqual "Hello Kotlin!"
+                            }
                 }
             }
         }

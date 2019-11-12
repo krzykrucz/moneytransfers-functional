@@ -37,7 +37,7 @@ apply plugin: "org.junit.platform.gradle.plugin"
 group "com.krzykrucz.moneytransfers"
 version "1.0"
 // Startup class:
-mainClassName = "com.krzykrucz.moneytransfers.AppKt"
+mainClassName = "com.krzykrucz.moneytransfers.App"
 sourceCompatibility = 11
 
 dependencyManagement {
@@ -49,10 +49,8 @@ dependencyManagement {
 dependencies {
     compile "org.jooby:jooby-lang-kotlin"
     compile "io.arrow-kt:arrow-core:0.8.2"
+    compile "io.arrow-kt:arrow-syntax:0.8.2"
     compile "io.arrow-kt:arrow-effects:0.8.2"
-    compile "io.arrow-kt:arrow-effects-io-extensions:0.8.2"
-    compile "io.arrow-kt:arrow-effects-extensions:0.8.2"
-    // https://mvnrepository.com/artifact/org.joda/joda-money
     compile group: 'org.joda', name: 'joda-money', version: '1.0.1'
 
     compile "org.jooby:jooby-netty"
