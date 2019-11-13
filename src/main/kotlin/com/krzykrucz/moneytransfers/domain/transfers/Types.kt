@@ -7,9 +7,12 @@ import arrow.core.Option
 import arrow.core.maybe
 import arrow.core.toT
 import arrow.syntax.function.pipe
+import com.krzykrucz.moneytransfers.domain.transfers.TransferOrder.IntraBankTransferOrder
 import org.joda.money.Money
 import java.util.*
 import arrow.core.Option.Companion as Option1
+import com.krzykrucz.moneytransfers.domain.transfers.TransferEvent.AccountDebited as AccountDebited
+import com.krzykrucz.moneytransfers.domain.transfers.TransferEvent.TransferOrdered.IntraBankTransferOrdered as IntraBankTransferOrdered
 
 // cheque:
 // beneficiary name, beneficiary acc number, currency, amount, orderer account number, orderer name, title
@@ -26,7 +29,6 @@ data class TransferOrderCheque(
 
 data class Orderer(val name: NonEmptyText, val accountNumber: AccountNumber)
 data class Beneficiary(val name: NonEmptyText, val accountNumber: AccountNumber)
-//data class AccountNumber(val number: NonEmptyText)
 inline class TransferAmount(val amount: NonNegativeRealNumber)
 
 sealed class CurrencyCode {
@@ -57,10 +59,6 @@ data class AccountNumber private constructor(val number: NonEmptyText) {
 
 data class TransferChequeRejected(val reason: Text)
 
-//typealias ValidateTransfer = (TransferOrderCheque) -> TransferOrder
-
-//typealias ValidateTransfer = (TransferOrderCheque) -> Either<TransferOrderRejected, TransferOrder>
-//
 typealias CheckTransferLimit = (TransferAmount) -> Boolean
 
 typealias ValidateTransferCheque = (CheckTransferLimit, TransferOrderCheque) -> Either<TransferChequeRejected, ApprovedTransferOrderCheque>
@@ -75,19 +73,17 @@ sealed class TransferOrder {
     data class IntraBankTransferOrder(val ref: RefNumber, val beneficiary: Customer) : TransferOrder()
 }
 
-inline class SWIFT(val code: NonEmptyText)
-
 sealed class FindBankError {
-    class AccountNotFound
-    class ExternalServiceFailure
+    object AccountNotFound : FindBankError()
+    object ExternalServiceFailure : FindBankError()
 }
 
-typealias FindOutBank = (AccountNumber) -> AsyncOutput<FindBankError, SWIFT>
-//typealias ClassifyTransfer = (FindOutBank, TransferOrder) -> Transfer
+data class AccountClassificationFailure(val reason: Text)
 
-typealias ClassifyTransfer = (FindOutBank, ApprovedTransferOrderCheque) -> AsyncOutput<Text, TransferOrder>
+typealias IsSameBank = (AccountNumber) -> AsyncOutput<Text, YesOrNo>
 
-//typealias FindOutBank = (AccountNumber) -> Either<FindBankError, SWIFT>
+typealias ClassifyTransfer = (IsSameBank, ApprovedTransferOrderCheque) -> AsyncOutput<AccountClassificationFailure, TransferOrder>
+
 //------
 
 typealias DebitAccount = (OrdererAccount, TransferOrder) -> DebitedOrdererAccount
@@ -107,57 +103,39 @@ data class OrdererAccount(
 typealias DebitedOrdererAccount = OrdererAccount
 
 
+//whole pipeline
+
 sealed class TransferMoneyError {
     object CannotClassifyTransfer : TransferMoneyError()
-    object OrderInvalid : TransferMoneyError()
+    object ChequeInvalid : TransferMoneyError()
 }
 
+sealed class TransferEvent {
+    sealed class TransferOrdered(val transferOrder: TransferOrder) : TransferEvent() {
+        data class IntraBankTransferOrdered(val intraBankTransferOrder: IntraBankTransferOrder) : TransferOrdered(intraBankTransferOrder)
+    }
 
-//whole workflow
-sealed class TransferEvent
-
-sealed class TransferOrdered(val transferOrder: TransferOrder) : TransferEvent()
-data class IntraBankTransferOrdered(val intraBankTransferOrder: TransferOrder.IntraBankTransferOrder) : TransferOrdered(intraBankTransferOrder)
-data class AccountDebited(val account: OrdererAccount) : TransferEvent()
+    data class AccountDebited(val account: OrdererAccount) : TransferEvent()
+}
 
 typealias TransferEvents = List<TransferEvent>
 
-//typealias OrderTransfer = (TransferOrderCheque, OrdererAccount) -> TransferEvents
+typealias OrderTransfer = (TransferOrderCheque, OrdererAccount) -> AsyncOutput<TransferMoneyError, TransferEvents>
 
-//// error handling
-//typealias OrderTransfer = (TransferOrderCheque, OrdererAccount) -> Either<TransferMoneyError, TransferEvents>
-//
-//// future
-typealias OrderTransfer =
-        (TransferOrderCheque, OrdererAccount) -> AsyncOutput<TransferMoneyError, TransferEvents>
-
-
-//fun orderTransfer(
-//        validateTransfer: ValidateTransfer,
-//        classifyTransfer: ClassifyTransfer,
-//        debitAccount: DebitAccount,
-//        checkDailyLimit: CheckDailyLimit,
-//        findOutBank: FindOutBank
-//): OrderTransfer = { transferOrderCheque, ordererAccount ->
-//    val transferOrder = validateTransfer(checkDailyLimit, transferOrderCheque)
-//    val transfer: Transfer = classifyTransfer(findOutBank, transferOrder)
-//    val debitedAccount = debitAccount(ordererAccount)
-//    transferEvents(transfer, debitedAccount)
-//}
 
 fun orderTransfer(
         validateTransferCheque: ValidateTransferCheque,
         classifyTransfer: ClassifyTransfer,
         debitAccount: DebitAccount,
         checkTransferLimit: CheckTransferLimit,
-        findOutBank: FindOutBank,
+        isSameBank: IsSameBank,
         createEvents: CreateEvents
 ): OrderTransfer = { transferOrderCheque, ordererAccount ->
     validateTransferCheque(checkTransferLimit, transferOrderCheque)
             .pipe { AsyncOutput.just(it) }
-            .mapError { TransferMoneyError.OrderInvalid }
+            .mapError { TransferMoneyError.ChequeInvalid }
             .flatMapSuccess { order ->
-                classifyTransfer(findOutBank, order)
+                classifyTransfer(isSameBank, order)
                         .mapError { TransferMoneyError.CannotClassifyTransfer }
             }
             .mapSuccess { transfer -> debitAccount(ordererAccount, transfer).toT(transfer) }
@@ -168,7 +146,7 @@ typealias CreateEvents = (TransferOrder, DebitedOrdererAccount) -> List<Transfer
 
 fun TransferOrder.toEvent(): Option<TransferEvent> =
         when (this) {
-            is TransferOrder.IntraBankTransferOrder ->
+            is IntraBankTransferOrder ->
                 IntraBankTransferOrdered(this)
                         .pipe(Option1::just)
             else -> Option1.empty()

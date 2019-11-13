@@ -7,9 +7,10 @@ import arrow.core.flatMap
 import arrow.core.getOrHandle
 import arrow.core.maybe
 import arrow.effects.IO
-import org.joda.money.CurrencyUnit
 
 typealias Text = String
+
+typealias YesOrNo = Boolean
 
 data class NonEmptyText(val text: String) {
     companion object {
