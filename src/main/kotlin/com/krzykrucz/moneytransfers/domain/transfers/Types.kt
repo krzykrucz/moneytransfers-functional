@@ -88,7 +88,7 @@ sealed class FindBankError : Exception() {
     class ExternalServiceFailure
 }
 
-typealias FindOutBank = (AccountNumber) -> AsyncResult<SWIFT, FindBankError>
+typealias FindOutBank = (AccountNumber) -> AsyncResult<SWIFT, FindBankError> // TODO change to IsSameBank=(AccNum)-> YesOrNo
 //typealias ClassifyTransfer = (FindOutBank, TransferOrder) -> Transfer
 
 data class FailureMessage(val text: RawText) : Exception()
@@ -102,7 +102,7 @@ typealias DebitAccount = (OrdererAccount, TransferOrder) -> DebitedOrdererAccoun
 
 
 data class Money(
-        val amount: BigDecimal,
+        val amount: BigDecimal,// TODO change to decimal
         val currency: CurrencyCode
 )
 
