@@ -54,8 +54,7 @@ dependencies {
     compile "io.arrow-kt:arrow-core:0.8.2"
     compile "io.arrow-kt:arrow-syntax:0.8.2"
     compile "io.arrow-kt:arrow-effects:0.8.2"
-    compile "com.github.VirtusLab.base-types-kt:refined-types:1.1.1"
-    compile "com.github.VirtusLab.base-types-kt:result-arrow:1.1.1"
+    compile "com.github.VirtusLab.base-types-kt:refined-types:2.1.0"
 
     compile "org.jooby:jooby-netty"
     compile "io.netty:netty-transport-native-epoll:${dependencyManagement.importedProperties['netty.version']}:${osdetector.classifier.contains('linux') ? 'linux-x86_64' : ''}"
