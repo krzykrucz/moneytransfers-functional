@@ -2,9 +2,7 @@
 
 package com.krzykrucz.moneytransfers.domain.transfers
 
-import arrow.core.Either
-import arrow.core.andThen
-import arrow.core.partially1
+import arrow.core.*
 
 
 typealias ValidateTransferCheque = (TransferOrderCheque) -> Either<RejectedTransferOrderCheque, ApprovedTransferOrderCheque>
@@ -23,12 +21,12 @@ sealed class OrderTransferError {
 
 val orderTransfer: OrderTransfer =
     { validateTransferCheque, classifyTransfer, debitAccount, createEvent ->
-        val validateTransferCheque = validateTransferCheque.adapt { ChequeValidationFailed }
+        val validateTransferCheque = validateTransferCheque.adapt { OrderTransferError.ChequeValidationFailed }
         val classifyTransfer = classifyTransfer.adapt()
         val createEvent = createEvent.adapt()
         ;
         { transferOrderCheque, ordererAccount ->
-            val debitAccount = debitAccount.partially1(ordererAccount).adapt(::DebittingFailed)
+            val debitAccount = debitAccount.partially1(ordererAccount).adapt(OrderTransferError::DebittingFailed)
 
             transferOrderCheque.adapt() *
                 validateTransferCheque *

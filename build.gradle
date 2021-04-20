@@ -73,5 +73,6 @@ sourceSets.main.resources {
 compileKotlin {
     kotlinOptions {
         freeCompilerArgs = ["-XXLanguage:+InlineClasses"]
+        jvmTarget = "1.8"
     }
 }
