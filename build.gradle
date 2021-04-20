@@ -50,10 +50,9 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3")
     compile "org.jooby:jooby-lang-kotlin"
-    compile "io.arrow-kt:arrow-core:0.8.2"
-    compile "io.arrow-kt:arrow-syntax:0.8.2"
-    compile "io.arrow-kt:arrow-effects:0.8.2"
+    compile "io.arrow-kt:arrow-core:0.13.1"
     compile "com.github.VirtusLab.base-types-kt:refined-types:2.1.0"
 
     compile "org.jooby:jooby-netty"

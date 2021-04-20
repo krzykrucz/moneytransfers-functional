@@ -4,12 +4,7 @@ package com.krzykrucz.moneytransfers.domain.transfers
 
 import arrow.core.Either
 import arrow.core.andThen
-import arrow.core.flatMap
-import arrow.core.right
-import arrow.syntax.function.partially1
-import arrow.syntax.function.pipe
-import com.krzykrucz.moneytransfers.domain.transfers.OrderTransferError.ChequeValidationFailed
-import com.krzykrucz.moneytransfers.domain.transfers.OrderTransferError.DebittingFailed
+import arrow.core.partially1
 
 
 typealias ValidateTransferCheque = (TransferOrderCheque) -> Either<RejectedTransferOrderCheque, ApprovedTransferOrderCheque>
@@ -43,7 +38,7 @@ val orderTransfer: OrderTransfer =
         }
     }
 
-operator fun <A, B> A.times(f: (A) -> B): B = this pipe f
+operator fun <A, B> A.times(f: (A) -> B): B = this.let(f)
 operator fun <A, B, C> ((A) -> B).times(g: (B) -> C): (A) -> C = this andThen g
 
 typealias Rail<E, A, B> = (Either<E, A>) -> Either<E, B>
