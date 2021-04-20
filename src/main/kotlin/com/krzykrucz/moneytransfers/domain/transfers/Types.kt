@@ -39,6 +39,10 @@ data class ApprovedTransferOrderCheque(
     val currency: CurrencyCode,
     val title: Option<NonEmptyText>
 )
+data class RejectedTransferOrderCheque(
+    val orderer: Orderer,
+    val title: Option<NonEmptyText>
+)
 
 
 data class AccountNumber private constructor(val number: NonEmptyText) {
@@ -81,6 +85,10 @@ data class OrdererAccount(
     val transferLimit: TransferLimit
 )
 typealias DebitedOrdererAccount = OrdererAccount
+
+enum class DebitAccountFailure {
+    InsufficientFunds
+}
 
 // result events
 data class AccountDebitedEvent(val account: OrdererAccount)
