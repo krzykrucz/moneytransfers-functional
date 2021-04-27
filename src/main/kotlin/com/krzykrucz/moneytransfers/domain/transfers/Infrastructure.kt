@@ -11,19 +11,7 @@ val fetchBankAccountFromDB: (Transaction) -> String = { tx ->
 
 fun main() {
     runBlocking {
-        Exception::toString.onError {
-            3.times.retry {
-                inTransaction { tx ->
-                    fetchBankAccountFromDB(tx)
-                }
-            }
-        }
-            .let(::println)
 
-        val fetchAccountLikeABoss =
-            fetchBankAccountFromDB + ::inTransaction + 3.times::retry + Exception::toString::onError
-
-        println(fetchAccountLikeABoss())
     }
 }
 

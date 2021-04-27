@@ -21,14 +21,11 @@ sealed class OrderTransferError {
 
 val orderTransfer: OrderTransfer =
     { validateTransferCheque, classifyTransfer, debitAccount, createEvent ->
-        val validateTransferCheque = validateTransferCheque.adapt { OrderTransferError.ChequeValidationFailed }
-        val classifyTransfer = classifyTransfer.adapt()
-        val createEvent = createEvent.adapt()
         ;
         { cheque, senderAccount ->
-            val debitAccount = debitAccount.partially1(senderAccount).adapt(OrderTransferError::DebitFailed)
+            val debitAccount = debitAccount.partially1(senderAccount)
 
-            cheque.adapt() *
+            cheque *
                 validateTransferCheque *
                 classifyTransfer *
                 debitAccount *
