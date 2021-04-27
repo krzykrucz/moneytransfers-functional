@@ -36,20 +36,17 @@ val orderTransfer: OrderTransfer =
         }
     }
 
-operator fun <A, B> A.times(f: (A) -> B): B = this.let(f)
-operator fun <A, B, C> ((A) -> B).times(g: (B) -> C): (A) -> C = this andThen g
+typealias TwoTracks<E, A, B> = (Either<E, A>) -> Either<E, B>
+typealias BankingTwoTracks<A, B> = TwoTracks<OrderTransferError, A, B>
 
-typealias Rail<E, A, B> = (Either<E, A>) -> Either<E, B>
-typealias DomainRail<A, B> = Rail<OrderTransferError, A, B>
-
-fun <A, B> ((A) -> B).adapt(): DomainRail<A, B> =
+fun <A, B> ((A) -> B).adapt(): BankingTwoTracks<A, B> =
     { either ->
         either.map { p1 ->
             this(p1)
         }
     }
 
-fun <A, E, B> ((A) -> Either<E, B>).adapt(errorMapper: (E) -> OrderTransferError): DomainRail<A, B> =
+fun <A, E, B> ((A) -> Either<E, B>).adapt(errorMapper: (E) -> OrderTransferError): BankingTwoTracks<A, B> =
     { either ->
         either.flatMap { p1 ->
             this(p1).mapLeft(errorMapper)
