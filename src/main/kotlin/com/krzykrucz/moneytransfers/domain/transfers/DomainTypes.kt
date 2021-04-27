@@ -11,7 +11,7 @@ import java.util.*
 // cheque:
 // beneficiary name, beneficiary acc number, currency, amount, orderer account number, orderer name, title
 
-data class TransferOrderCheque(
+data class TransferMoneyCheque(
     val beneficiaryName: RawText,
     val beneficiaryAccountNumber: RawText,
     val currency: RawText,
@@ -79,17 +79,17 @@ sealed class TransferLimit {
     object None : TransferLimit()
 }
 
-data class OrdererAccount(
+data class SenderAccount(
     val accountNumber: AccountNumber,
     val balance: AccountBalance,
     val transferLimit: TransferLimit
 )
-typealias DebitedOrdererAccount = OrdererAccount
+typealias DebitedOrdererAccount = SenderAccount
 
 enum class DebitAccountFailure {
     InsufficientFunds
 }
 
 // result events
-data class AccountDebitedEvent(val account: OrdererAccount)
+data class AccountDebitedEvent(val account: SenderAccount)
 

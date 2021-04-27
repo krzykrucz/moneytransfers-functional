@@ -5,17 +5,17 @@ package com.krzykrucz.moneytransfers.domain.transfers
 import arrow.core.*
 
 
-typealias ValidateTransferCheque = (TransferOrderCheque) -> Either<RejectedTransferOrderCheque, ApprovedTransferOrderCheque>
+typealias ValidateTransferCheque = (TransferMoneyCheque) -> Either<RejectedTransferOrderCheque, ApprovedTransferOrderCheque>
 typealias ClassifyTransfer = (ApprovedTransferOrderCheque) -> TransferOrder
-typealias DebitAccount = (OrdererAccount, TransferOrder) -> Either<DebitAccountFailure, DebitedOrdererAccount>
+typealias DebitAccount = (SenderAccount, TransferOrder) -> Either<DebitAccountFailure, DebitedOrdererAccount>
 typealias CreateEvent = (DebitedOrdererAccount) -> AccountDebitedEvent
 //main workflow
 typealias OrderTransfer =
     (ValidateTransferCheque, ClassifyTransfer, DebitAccount, CreateEvent) ->
-    (TransferOrderCheque, OrdererAccount) -> Either<OrderTransferError, AccountDebitedEvent>
+    (TransferMoneyCheque, SenderAccount) -> Either<OrderTransferError, AccountDebitedEvent>
 
 sealed class OrderTransferError {
-    data class DebittingFailed(val failure: DebitAccountFailure) : OrderTransferError()
+    data class DebitFailed(val failure: DebitAccountFailure) : OrderTransferError()
     object ChequeValidationFailed : OrderTransferError()
 }
 
@@ -25,10 +25,10 @@ val orderTransfer: OrderTransfer =
         val classifyTransfer = classifyTransfer.adapt()
         val createEvent = createEvent.adapt()
         ;
-        { transferOrderCheque, ordererAccount ->
-            val debitAccount = debitAccount.partially1(ordererAccount).adapt(OrderTransferError::DebittingFailed)
+        { cheque, senderAccount ->
+            val debitAccount = debitAccount.partially1(senderAccount).adapt(OrderTransferError::DebitFailed)
 
-            transferOrderCheque.adapt() *
+            cheque.adapt() *
                 validateTransferCheque *
                 classifyTransfer *
                 debitAccount *
